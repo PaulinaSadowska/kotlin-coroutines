@@ -17,12 +17,14 @@
 package com.example.android.advancedcoroutines
 
 import androidx.lifecycle.*
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
  * The [ViewModel] for fetching a list of [Plant]s.
  */
+@FlowPreview
 class PlantListViewModel internal constructor(
     private val plantRepository: PlantRepository
 ) : ViewModel() {
