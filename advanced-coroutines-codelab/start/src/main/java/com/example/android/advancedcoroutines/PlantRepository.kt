@@ -18,11 +18,12 @@ package com.example.android.advancedcoroutines
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.liveData
-import androidx.lifecycle.map
+import androidx.lifecycle.switchMap
 import com.example.android.advancedcoroutines.util.CacheOnSuccess
 import com.example.android.advancedcoroutines.utils.ComparablePair
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Repository module for handling data operations.
@@ -43,10 +44,11 @@ class PlantRepository private constructor(
      * Fetch a list of [Plant]s from the database.
      * Returns a LiveData-wrapped List of Plants.
      */
-    val plants: LiveData<List<Plant>> = liveData {
-        val plantsLiveData: LiveData<List<Plant>> = plantDao.getPlants()
-        val sortOrder: List<String> = plantListSortOrderCache.getOrAwait()
-        emitSource(plantsLiveData.map { it.applySort(sortOrder) })
+    val plants: LiveData<List<Plant>> = plantDao.getPlants().switchMap {
+        liveData {
+            val sortOrder = plantListSortOrderCache.getOrAwait()
+            emit(it.applyMainSafeSort(sortOrder))
+        }
     }
 
     private val plantListSortOrderCache = CacheOnSuccess(onErrorFallback = { listOf() }) {
@@ -60,15 +62,25 @@ class PlantRepository private constructor(
         }
     }
 
+    private suspend fun List<Plant>.applyMainSafeSort(customSortOrder: List<String>): List<Plant> {
+        return withContext(defaultDispatcher) {
+            applySort(customSortOrder)
+        }
+    }
+
+
     /**
      * Fetch a list of [Plant]s from the database that matches a given [GrowZone].
      * Returns a LiveData-wrapped List of Plants.
      */
-    fun getPlantsWithGrowZone(growZone: GrowZone) = liveData {
-        val plantLiveData = plantDao.getPlantsWithGrowZoneNumber(growZone.number)
-        val sortOrder = plantListSortOrderCache.getOrAwait()
-        emitSource(plantLiveData.map { it.applySort(sortOrder) })
-    }
+    fun getPlantsWithGrowZone(growZone: GrowZone) = plantDao
+            .getPlantsWithGrowZoneNumber(growZone.number)
+            .switchMap { plants ->
+                liveData {
+                    val sortOrder = plantListSortOrderCache.getOrAwait()
+                    emit(plants.applyMainSafeSort(sortOrder))
+                }
+            }
 
     /**
      * Returns true if we should make a network request.
