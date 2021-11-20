@@ -51,6 +51,8 @@ class PlantRepository private constructor(
         }
     }
 
+    val plantsFlow = plantDao.getPlantsAsFlow()
+
     private val plantListSortOrderCache = CacheOnSuccess(onErrorFallback = { listOf() }) {
         plantService.customPlantSortOrder()
     }
@@ -81,6 +83,9 @@ class PlantRepository private constructor(
                     emit(plants.applyMainSafeSort(sortOrder))
                 }
             }
+
+    fun getPlantsFlowWithGrowZone(growZone: GrowZone) =
+            plantDao.getPlantsWithGrowZoneNumberAsFlow(growZone.number)
 
     /**
      * Returns true if we should make a network request.

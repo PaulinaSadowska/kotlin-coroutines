@@ -28,6 +28,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.observe
+import com.example.android.advancedcoroutines.Plant
 import com.example.android.advancedcoroutines.PlantListViewModel
 import com.example.android.advancedcoroutines.PlantRepository
 import com.example.android.advancedcoroutines.R
@@ -85,7 +86,7 @@ class PlantListFragment : Fragment() {
     }
 
     private fun subscribeUi(adapter: PlantAdapter) {
-        viewModel.plants.observe(viewLifecycleOwner) { plants ->
+        viewModel.plantsUsingFlow.observe<List<Plant>>(viewLifecycleOwner) { plants ->
             adapter.submitList(plants)
         }
     }
