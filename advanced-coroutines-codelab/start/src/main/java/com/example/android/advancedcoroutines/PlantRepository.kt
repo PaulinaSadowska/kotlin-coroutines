@@ -16,6 +16,11 @@
 
 package com.example.android.advancedcoroutines
 
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.liveData
+import androidx.lifecycle.map
+import com.example.android.advancedcoroutines.util.CacheOnSuccess
+import com.example.android.advancedcoroutines.utils.ComparablePair
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
@@ -29,23 +34,41 @@ import kotlinx.coroutines.Dispatchers
  * [tryUpdateRecentPlantsCache].
  */
 class PlantRepository private constructor(
-    private val plantDao: PlantDao,
-    private val plantService: NetworkService,
-    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
+        private val plantDao: PlantDao,
+        private val plantService: NetworkService,
+        private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
 
     /**
      * Fetch a list of [Plant]s from the database.
      * Returns a LiveData-wrapped List of Plants.
      */
-    val plants = plantDao.getPlants()
+    val plants: LiveData<List<Plant>> = liveData {
+        val plantsLiveData: LiveData<List<Plant>> = plantDao.getPlants()
+        val sortOrder: List<String> = plantListSortOrderCache.getOrAwait()
+        emitSource(plantsLiveData.map { it.applySort(sortOrder) })
+    }
+
+    private val plantListSortOrderCache = CacheOnSuccess(onErrorFallback = { listOf() }) {
+        plantService.customPlantSortOrder()
+    }
+
+    private fun List<Plant>.applySort(customSortOrder: List<String>): List<Plant> {
+        return this.sortedBy { plant ->
+            val position = customSortOrder.indexOf(plant.plantId).takeIf { it >= 0 }
+            ComparablePair(position ?: Int.MAX_VALUE, plant.name)
+        }
+    }
 
     /**
      * Fetch a list of [Plant]s from the database that matches a given [GrowZone].
      * Returns a LiveData-wrapped List of Plants.
      */
-    fun getPlantsWithGrowZone(growZone: GrowZone) =
-        plantDao.getPlantsWithGrowZoneNumber(growZone.number)
+    fun getPlantsWithGrowZone(growZone: GrowZone) = liveData {
+        val plantLiveData = plantDao.getPlantsWithGrowZoneNumber(growZone.number)
+        val sortOrder = plantListSortOrderCache.getOrAwait()
+        emitSource(plantLiveData.map { it.applySort(sortOrder) })
+    }
 
     /**
      * Returns true if we should make a network request.
@@ -94,11 +117,12 @@ class PlantRepository private constructor(
     companion object {
 
         // For Singleton instantiation
-        @Volatile private var instance: PlantRepository? = null
+        @Volatile
+        private var instance: PlantRepository? = null
 
         fun getInstance(plantDao: PlantDao, plantService: NetworkService) =
-            instance ?: synchronized(this) {
-                instance ?: PlantRepository(plantDao, plantService).also { instance = it }
-            }
+                instance ?: synchronized(this) {
+                    instance ?: PlantRepository(plantDao, plantService).also { instance = it }
+                }
     }
 }

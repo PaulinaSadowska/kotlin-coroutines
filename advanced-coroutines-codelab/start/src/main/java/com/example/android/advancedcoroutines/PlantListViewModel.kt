@@ -47,7 +47,7 @@ class PlantListViewModel internal constructor(
     val snackbar: LiveData<String?>
         get() = _snackbar
 
-    private val _spinner = MutableLiveData<Boolean>(false)
+    private val _spinner = MutableLiveData(false)
     /**
      * Show a loading spinner if true
      */
@@ -57,7 +57,7 @@ class PlantListViewModel internal constructor(
     /**
      * The current growZone selection.
      */
-    private val growZone = MutableLiveData<GrowZone>(NoGrowZone)
+    private val growZone = MutableLiveData(NoGrowZone)
 
     /**
      * A list of plants that updates based on the current filter.
