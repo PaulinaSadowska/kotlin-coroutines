@@ -88,7 +88,7 @@ class PlantRepository private constructor(
 
     // - more complicated
     // + runs concurrently
-    // fetches sort order only when changed
+    // + fetches sort order only when changed
     val plantsFlow: Flow<List<Plant>>
         get() = plantDao.getPlantsAsFlow().combine(customSortFlow) { plants, sortOrder ->
             plants.applySort(sortOrder)
