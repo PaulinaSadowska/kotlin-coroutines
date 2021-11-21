@@ -86,17 +86,23 @@ class PlantListViewModel internal constructor(
         // When creating a new ViewModel, clear the grow zone and perform any related udpates
         clearGrowZoneNumber()
 
-        growZoneFlow
-                .mapLatest { growZone ->
-                    _spinner.value = true
-                    if (growZone == NoGrowZone) {
-                        plantRepository.tryUpdateRecentPlantsCache()
-                    } else {
-                        plantRepository.tryUpdateRecentPlantsForGrowZoneCache(growZone)
-                    }
-                }.onEach { _spinner.value = false }
+        loadDataFor(growZoneFlow) { growZone ->
+            _spinner.value = true
+            if (growZone == NoGrowZone) {
+                plantRepository.tryUpdateRecentPlantsCache()
+            } else {
+                plantRepository.tryUpdateRecentPlantsForGrowZoneCache(growZone)
+            }
+        }
+    }
+
+    private fun <T> loadDataFor(source: StateFlow<T>, block: suspend (T) -> Unit) {
+        source
+                .mapLatest(block)
+                .onEach { _spinner.value = false }
                 .catch { t -> _snackbar.value = t.message }
                 .launchIn(viewModelScope)
+
     }
 
     /**
