@@ -85,6 +85,10 @@ class PlantRepository private constructor(
             }
 
 
+
+    // - more complicated
+    // + runs concurrently
+    // fetches sort order only when changed
     val plantsFlow: Flow<List<Plant>>
         get() = plantDao.getPlantsAsFlow().combine(customSortFlow) { plants, sortOrder ->
             plants.applySort(sortOrder)
@@ -93,11 +97,15 @@ class PlantRepository private constructor(
 
     private val customSortFlow = plantListSortOrderCache::getOrAwait.asFlow()
 
+    // + more simple
+    // - it runs in sequence
+    // - fetches sort order every time growZone changes (it's ok because we have cache)
     fun getPlantsFlowWithGrowZone(growZone: GrowZone) =
-            plantDao.getPlantsWithGrowZoneNumberAsFlow(growZone.number).combine(customSortFlow) { plants, sortOrder ->
-                plants.applySort(sortOrder)
-            }.flowOn(defaultDispatcher)
-                    .conflate()
+            plantDao.getPlantsWithGrowZoneNumberAsFlow(growZone.number).map{ plants ->
+                val sortOrder = plantListSortOrderCache.getOrAwait()
+                val sorted = plants.applyMainSafeSort(sortOrder)
+                sorted
+            }
 
     /**
      * Returns true if we should make a network request.
