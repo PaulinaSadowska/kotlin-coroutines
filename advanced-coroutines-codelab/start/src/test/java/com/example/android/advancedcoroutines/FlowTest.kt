@@ -1,12 +1,15 @@
 package com.example.android.advancedcoroutines
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.runBlockingTest
 import org.junit.Test
-import kotlin.collections.forEach
 
+@FlowPreview
+@ExperimentalCoroutinesApi
 class FlowTest {
 
     private fun makeFlow() = flow {
@@ -20,24 +23,23 @@ class FlowTest {
     }
 
     @InternalCoroutinesApi
-    @ExperimentalCoroutinesApi
     @Test
     fun `collect values from flow`() {
         runBlockingTest {
-            makeFlow().map {value ->
-                        println("got $value")
-                        value
-                    }
+            makeFlow().map { value ->
+                println("got $value")
+                value
+            }
                     .collect()
             println("flow is completed")
         }
     }
 
-    @ExperimentalCoroutinesApi
+
     @Test
     fun `flow to list`() {
         runBlockingTest {
-            val values = makeFlow().map{
+            val values = makeFlow().map {
                 println("maps $it")
                 it
             }.toList()
@@ -48,7 +50,7 @@ class FlowTest {
         }
     }
 
-    @ExperimentalCoroutinesApi
+
     @Test
     fun `flow with take`() {
         runBlockingTest {
@@ -60,4 +62,106 @@ class FlowTest {
             println("flow is completed")
         }
     }
+
+
+    @Test
+    fun `flow with flatMapLatest`() {
+        runBlockingTest {
+            val result = flow {
+                emit("a")
+                delay(100)
+                emit("b")
+            }.flatMapLatest { value ->
+                flow {
+                    emit(value + "_0")
+                    delay(200)
+                    emit(value + "_1")
+                }
+            }.toList()
+            print(result.joinToString())
+        }
+        // works the same as switch map
+        // a_0, b_0, b_1
+    }
+
+
+    @Test
+    fun `flow with flatMapLatest 2`() {
+        runBlockingTest {
+            val result = flow {
+                emit("a")
+                delay(200)
+                emit("b")
+            }.flatMapLatest { value ->
+                flow {
+                    emit(value + "_0")
+                    delay(100)
+                    emit(value + "_1")
+                }
+            }.toList()
+            print(result.joinToString())
+        }
+        // works the same as switch map
+        // a_0, a_1, b_0, b_1
+    }
+
+    @FlowPreview
+    @Test
+    fun `flow with flatMapMerge`() {
+        runBlockingTest {
+            val result = flow {
+                emit("a")
+                delay(100)
+                emit("b")
+            }.flatMapMerge { value ->
+                flow {
+                    emit(value + "_0")
+                    delay(200)
+                    emit(value + "_1")
+                }
+            }.toList()
+            print(result.joinToString())
+        }
+        // a_0, b_0, a_1, b_1
+    }
+
+
+    @Test
+    fun `flow with flatMapConcat`() {
+        runBlockingTest {
+            val result = flow {
+                emit("a")
+                delay(100)
+                emit("b")
+            }.flatMapConcat { value ->
+                flow {
+                    emit(value + "_0")
+                    delay(200)
+                    emit(value + "_1")
+                }
+            }.toList()
+            print(result.joinToString())
+        }
+        //a_0, a_1, b_0, b_1
+    }
+
+    @Test
+    fun `flow with flatMapConcat 2`() {
+        runBlockingTest {
+            val result = flow {
+                emit("a")
+                delay(200)
+                emit("b")
+            }.flatMapConcat { value ->
+                flow {
+                    emit(value + "_0")
+                    delay(100)
+                    emit(value + "_1")
+                }
+            }.toList()
+            print(result.joinToString())
+        }
+        //a_0, a_1, b_0, b_1
+    }
+
 }
