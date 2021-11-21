@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
  * To update the plants cache, call [tryUpdateRecentPlantsForGrowZoneCache] or
  * [tryUpdateRecentPlantsCache].
  */
+@FlowPreview
 class PlantRepository private constructor(
         private val plantDao: PlantDao,
         private val plantService: NetworkService,
@@ -84,19 +85,19 @@ class PlantRepository private constructor(
             }
 
 
-    @FlowPreview
     val plantsFlow: Flow<List<Plant>>
         get() = plantDao.getPlantsAsFlow().combine(customSortFlow) { plants, sortOrder ->
             plants.applySort(sortOrder)
         }.flowOn(defaultDispatcher)
                 .conflate()
 
-    @FlowPreview
     private val customSortFlow = plantListSortOrderCache::getOrAwait.asFlow()
 
-
     fun getPlantsFlowWithGrowZone(growZone: GrowZone) =
-            plantDao.getPlantsWithGrowZoneNumberAsFlow(growZone.number)
+            plantDao.getPlantsWithGrowZoneNumberAsFlow(growZone.number).combine(customSortFlow) { plants, sortOrder ->
+                plants.applySort(sortOrder)
+            }.flowOn(defaultDispatcher)
+                    .conflate()
 
     /**
      * Returns true if we should make a network request.
